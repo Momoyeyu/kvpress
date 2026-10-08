@@ -1,0 +1,9 @@
+{
+  "title": "kvpress 架构学习手册",
+  "sourceRevision": "66c5b0903b3be742bcba6b96d9796bd561e58f2d",
+  "sections": [
+    {"title": "认识 kvpress", "chapters": [{"id": "overview", "title": "项目定位", "file": "chapters/01-overview.md"}, {"id": "components", "title": "模块与边界", "file": "chapters/02-components.md"}]},
+    {"title": "运行主线", "chapters": [{"id": "lifecycle", "title": "请求与缓存生命周期", "file": "chapters/03-lifecycle.md"}, {"id": "methods", "title": "Press 家族", "file": "chapters/04-methods.md"}]},
+    {"title": "研究与实践", "chapters": [{"id": "evaluation", "title": "评测系统", "file": "chapters/05-evaluation.md"}, {"id": "reading", "title": "源码阅读路线", "file": "chapters/06-reading.md"}]}
+  ]
+}

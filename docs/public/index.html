@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>kvpress · 架构学习手册</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f7f9;--panel:#fff;--ink:#193044;--muted:#586c7d;--line:#d5e2e9;--accent:#167c81;--code:#e8f2f3}
+@media(prefers-color-scheme:dark){:root{--bg:#101b27;--panel:#1a2b38;--ink:#edf3f6;--muted:#b1c5ce;--line:#344958;--accent:#76d1cd;--code:#263d4b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}header{height:58px;background:#172d3d;color:#f5fafb;display:flex;align-items:center;gap:24px;padding:0 28px;position:sticky;top:0;z-index:2;box-shadow:0 2px 12px #0002}.brand{font-size:17px;font-weight:750;letter-spacing:.04em}header nav{display:flex;gap:8px}header a{color:#d0e4e7;text-decoration:none;padding:6px 14px;border-radius:8px;font-size:13px}header a.active,header a:hover{background:#305465;color:#fff}.revision{margin-left:auto;font:12px ui-monospace,SFMono-Regular,monospace;color:#b2ccd4}
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1640px;margin:auto;min-height:calc(100vh - 58px)}aside{border-right:1px solid var(--line);padding:22px 14px 32px;position:sticky;top:58px;height:calc(100vh - 58px);overflow:auto}aside h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 12px 8px}aside a{display:block;padding:7px 12px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:13px}aside a:hover,aside a.active{background:var(--code);color:var(--accent);font-weight:650}.side-foot{border-top:1px solid var(--line);margin:28px 12px 0;padding-top:14px;font:11px/1.7 ui-monospace,SFMono-Regular,monospace;color:var(--muted)}main{min-width:0;padding:26px clamp(16px,4vw,64px) 80px}.prose{max-width:940px;margin:auto}.prose h1{font-size:31px;line-height:1.25;margin:12px 0 24px}.prose h2{font-size:21px;margin:36px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}.prose h3{font-size:17px;margin:26px 0 8px}.prose p{margin:12px 0}.prose a{color:var(--accent);text-underline-offset:2px}.prose code{background:var(--code);border-radius:4px;padding:2px 5px;font:13px ui-monospace,SFMono-Regular,monospace}.prose pre{background:#172b3a;color:#eef8f8;border-radius:10px;overflow:auto;padding:17px}.prose pre code{background:none;color:inherit;padding:0}.table-wrap{overflow-x:auto;margin:18px 0}.prose table{border-collapse:collapse;width:100%;font-size:13px}.prose td{padding:9px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}.prose tr:first-child td{background:var(--code);font-weight:650}.prose ul,.prose ol{padding-left:26px}.crumb{font-size:12px;color:var(--muted);margin:0 0 10px}.hero h1{font-size:30px;margin:8px 0}.hero p{color:var(--muted)}.diagram{display:block;width:100%;height:min(86vh,960px);min-height:600px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.error{padding:20px;border:1px solid #b37a65;border-radius:8px;color:var(--ink)}
+@media(max-width:760px){header{padding:0 12px;gap:7px}.brand{font-size:13px}header a{padding:6px 9px}.revision{display:none}.shell{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px}aside h2{margin:10px 0 3px}aside a{display:inline-block;padding:5px 8px}.side-foot{display:none}main{padding:16px 16px 48px}.diagram{height:75vh;min-height:540px}}
+</style>
+</head>
+<body>
+<header><span class="brand">KVPRESS / ARCHITECTURE</span><nav aria-label="顶部导航"><a id="guideLink" href="#overview">学习手册</a><a id="diagramLink" href="#diagram">架构图</a></nav><span id="revision" class="revision"></span></header>
+<div class="shell"><aside id="sidebar" aria-label="章节导航"></aside><main id="content" aria-live="polite"></main></div>
+<script>
+const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let manifest,requestId=0;
+function inline(text){
+  let result=escapeHtml(text.replaceAll('\uE000','|'));
+  result=result.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  return result.replace(/\[\[([a-zA-Z0-9_./-]+)#(L\d+(?:-L\d+)?)\|([^\]]+)\]\]/g,(_,path,lines,label)=>`<a href="https://github.com/Momoyeyu/kvpress/blob/${manifest.sourceRevision}/${path}#${lines}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+}
+function markdown(source){
+  const lines=source.replace(/\r\n/g,'\n').split('\n'),out=[];
+  let paragraph=[],list='',inCode=false,inTable=false,code=[];
+  const flush=()=>{if(paragraph.length){out.push(`<p>${inline(paragraph.join(' '))}</p>`);paragraph=[];}if(list){out.push(`</${list}>`);list='';}if(inTable){out.push('</table></div>');inTable=false;}};
+  for(const line of lines){
+    if(line.startsWith('```')){if(inCode){out.push(`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`);code=[];inCode=false;}else{flush();inCode=true;}continue;}
+    if(inCode){code.push(line);continue;}
+    if(line.startsWith('|')&&line.endsWith('|')){
+      if(!inTable){flush();out.push('<div class="table-wrap"><table>');inTable=true;}
+      if(/^\|[\s:|-]+\|$/.test(line))continue;
+      const cells=line.slice(1,-1).replace(/\[\[[^\]]+\]\]/g,match=>match.replaceAll('|','\uE000')).split('|').map(cell=>`<td>${inline(cell.trim())}</td>`).join('');
+      out.push(`<tr>${cells}</tr>`);continue;
+    }
+    if(inTable)flush();
+    if(!line.trim()){flush();continue;}
+    const heading=/^(#{1,3})\s+(.+)$/.exec(line);
+    if(heading){flush();const level=heading[1].length;out.push(`<h${level}>${inline(heading[2])}</h${level}>`);continue;}
+    const item=/^([-*]|\d+\.)\s+(.+)$/.exec(line);
+    if(item){if(paragraph.length){out.push(`<p>${inline(paragraph.join(' '))}</p>`);paragraph=[];}const kind=item[1].endsWith('.')?'ol':'ul';if(list&&list!==kind){out.push(`</${list}>`);list='';}if(!list){out.push(`<${kind}>`);list=kind;}out.push(`<li>${inline(item[2])}</li>`);continue;}
+    if(list){out.push(`</${list}>`);list='';}paragraph.push(line.trim());
+  }
+  flush();if(inCode)out.push(`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`);
+  return out.join('\n');
+}
+async function render(){
+  const current=++requestId,id=location.hash.slice(1)||'overview',chapters=manifest.sections.flatMap(section=>section.chapters);
+  const chapter=chapters.find(item=>item.id===id),content=document.getElementById('content');
+  document.querySelectorAll('#sidebar a').forEach(link=>{link.classList.toggle('active',link.dataset.id===id);if(link.dataset.id===id)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+  document.getElementById('guideLink').classList.toggle('active',id!=='diagram');
+  document.getElementById('diagramLink').classList.toggle('active',id==='diagram');
+  if(id==='diagram'){content.innerHTML='<div class="hero"><h1>kvpress 架构总览</h1><p>从 Pipeline 到 attention hook、Press 策略和层级 KV Cache。节点含源码依据；解码期和评测的例外路径见左侧章节。</p><iframe class="diagram" title="kvpress Archify 架构图" src="architecture.html"></iframe></div>';window.scrollTo(0,0);return;}
+  if(!chapter){content.innerHTML='<p class="error">未找到该章节。请从左侧选择。</p>';return;}
+  try{const response=await fetch(chapter.file);if(!response.ok)throw new Error(`HTTP ${response.status}`);const source=await response.text();if(current!==requestId)return;content.innerHTML=`<article class="prose"><div class="crumb">KVPRESS / ${escapeHtml(chapter.title)}</div>${markdown(source)}</article>`;}
+  catch(error){if(current===requestId)content.innerHTML=`<p class="error">章节加载失败：${escapeHtml(error.message)}。请通过 HTTP 服务访问本站。</p>`;}
+  window.scrollTo(0,0);
+}
+async function load(){
+  const response=await fetch('manifest.json');if(!response.ok)throw new Error(`manifest: HTTP ${response.status}`);
+  manifest=await response.json();document.getElementById('revision').textContent=`SOURCE · ${manifest.sourceRevision.slice(0,8)}`;
+  document.getElementById('sidebar').innerHTML=manifest.sections.map(section=>`<h2>${escapeHtml(section.title)}</h2>${section.chapters.map(chapter=>`<a data-id="${escapeHtml(chapter.id)}" href="#${escapeHtml(chapter.id)}">${escapeHtml(chapter.title)}</a>`).join('')}`).join('')+`<div class="side-foot">LOCAL STUDY ONLY<br>${escapeHtml(manifest.sourceRevision.slice(0,12))}<br>不用于 PR</div>`;
+  window.addEventListener('hashchange',render);await render();
+}
+load().catch(error=>{document.getElementById('content').innerHTML=`<p class="error">文档无法加载：${escapeHtml(error.message)}。请在 worktree 根目录运行 python3 -m http.server 8797 --bind 127.0.0.1 --directory docs/public。</p>`;});
+</script>
+</body>
+</html>

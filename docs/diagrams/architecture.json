@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "kvpress · 核心运行路径",
+    "locale": "zh-CN",
+    "output": "docs/public/architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:Momoyeyu/kvpress.git",
+      "revision": "66c5b0903b3be742bcba6b96d9796bd561e58f2d",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {"id": "caller", "type": "external", "label": "调用者", "sublabel": "context / question / press", "pos": [40, 100], "size": [165, 68], "sources": [{"path": "README.md", "line": 39, "end_line": 53}]},
+    {"id": "pipeline", "type": "frontend", "label": "生成 Pipeline", "sublabel": "模板 · 分词 · 上下文复用", "pos": [310, 100], "size": [180, 68], "sources": [{"path": "kvpress/pipeline.py", "line": 105, "end_line": 171}, {"path": "kvpress/pipeline.py", "line": 202, "end_line": 250}]},
+    {"id": "model", "type": "backend", "label": "Transformers 模型", "sublabel": "prefill / greedy decode", "pos": [600, 100], "size": [180, 68], "sources": [{"path": "kvpress/pipeline.py", "line": 216, "end_line": 221}, {"path": "kvpress/pipeline.py", "line": 289, "end_line": 318}]},
+    {"id": "hooks", "type": "backend", "label": "attention hooks", "sublabel": "仅在 with press(model) 内", "pos": [890, 100], "size": [180, 68], "sources": [{"path": "kvpress/presses/base_press.py", "line": 188, "end_line": 207}]},
+    {"id": "press", "type": "backend", "label": "Press 策略", "sublabel": "打分 / 选取 / 特殊压缩", "pos": [890, 335], "size": [180, 68], "sources": [{"path": "kvpress/presses/base_press.py", "line": 139, "end_line": 162}, {"path": "kvpress/presses/scorer_press.py", "line": 87, "end_line": 103}]},
+    {"id": "cache", "type": "database", "label": "层级 KV Cache", "sublabel": "Dynamic / Quantized", "pos": [600, 335], "size": [180, 68], "sources": [{"path": "kvpress/pipeline.py", "line": 210, "end_line": 224}, {"path": "kvpress/presses/base_press.py", "line": 148, "end_line": 160}]},
+    {"id": "eval", "type": "external", "label": "评测 CLI", "sublabel": "配置 · 数据集 · 结果", "pos": [310, 335], "size": [180, 68], "sources": [{"path": "evaluation/evaluate.py", "line": 503, "end_line": 529}, {"path": "evaluation/evaluate.py", "line": 543, "end_line": 577}]}
+  ],
+  "connections": [
+    {"id": "call", "from": "caller", "to": "pipeline", "label": "输入文本与策略", "variant": "emphasis"},
+    {"id": "prefill", "from": "pipeline", "to": "model", "label": "prefill / 生成"},
+    {"id": "forward", "from": "model", "to": "hooks", "label": "逐层 forward"},
+    {"id": "compress", "from": "hooks", "to": "press", "label": "prefill 后压缩"},
+    {"id": "write", "from": "press", "to": "cache", "label": "更新 keys / values"},
+    {"id": "reuse", "from": "cache", "to": "model", "label": "解码读取缓存"},
+    {"id": "evaluate", "from": "eval", "to": "pipeline", "label": "批量评测", "variant": "dashed"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "默认路径", "items": ["Pipeline 对 context 做一次 prefill；hook 在各层更新缓存。", "生成问题答案后回退本次追加的 KV，复用压缩后的上下文。"]},
+    {"dot": "amber", "title": "并非全部都是物理裁剪", "items": ["AdaKV 写入 masked_key_indices；全局 attention patch 在 decode 时屏蔽指定键。", "DecodingPress 则在生成阶段按间隔重新压缩。"]}
+  ]
+}
